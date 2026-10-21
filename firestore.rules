@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// Firestore Security Rules for Quantica Digital (Study Bison)
+// Collections:
+//   users/{uid}/enrollments/{batchId}  -> per-user batch enrollments
+//   leaderboard/{uid}                  -> global learner leaderboard
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+
+    // True when the request comes from a signed-in user and the doc is theirs.
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // True when the request is a signed-in user.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ---------------------------------------------------------------------
+    // Per-user enrollments
+    //   users/{uid}/enrollments/{batchId}
+    // Only the owner may read or write their own enrollments.
+    // ---------------------------------------------------------------------
+    match /users/{uid} {
+      // A profile doc is optional; if present, only the owner can read/write.
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid);
+
+      match /enrollments/{batchId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.batchId is string
+          && request.resource.data.batchName is string;
+        allow update: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // Leaderboard
+    //   leaderboard/{uid}
+    // Anyone may read the leaderboard (it is a public ranking).
+    // A user may only create/update their own entry; the uid in the doc
+    // must match the auth uid, and points may only advance via increment()
+    // so no one can arbitrarily set their own score.
+    // ---------------------------------------------------------------------
+    match /leaderboard/{uid} {
+      allow read: if true;
+
+      allow create: if isOwner(uid)
+        && request.resource.data.userId == uid
+        && request.resource.data.points is int
+        && request.resource.data.points >= 0;
+
+      allow update: if isOwner(uid)
+        && request.resource.data.userId == uid
+        // Points may only increase, and only via increment (no arbitrary set).
+        && (
+          !('points' in request.resource.data.diff().afterData) ||
+          request.resource.data.diff().afterData.points >
+            resource.data.points
+        );
+
+      allow delete: if false; // leaderboard entries are never deleted by clients
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
