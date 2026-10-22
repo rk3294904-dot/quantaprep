@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { firebaseAuth, signInWithGoogle } from "@/lib/firebase";
 
 export function SiteHeader() {
-  const { navigate, searchQuery, setSearchQuery } = useApp();
+  const { navigate, searchQuery, setSearchQuery, view } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -45,8 +45,9 @@ export function SiteHeader() {
           </button>
 
           <div className="hidden h-7 w-px bg-white/10 lg:block" />
-          <button type="button" onClick={openLeaderboard} aria-label="Open leaderboard" title="Leaderboard" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[#4a9eff]/10 hover:text-[#7cc0ff]">
-            <Trophy size={18} />
+          <button type="button" onClick={openLeaderboard} aria-label="Open leaderboard" title="Leaderboard" aria-current={view === "leaderboard" ? "page" : undefined} className={cn("sb-leaderboard-button flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-200", view === "leaderboard" && "sb-leaderboard-active")}>
+            <Trophy size={20} strokeWidth={2.2} aria-hidden="true" />
+            <span className="hidden text-xs font-bold lg:inline">Leaderboard</span>
           </button>
 
           <div className="min-w-0 flex-1" />
@@ -72,7 +73,7 @@ export function SiteHeader() {
 
         {mobileOpen && (
           <div className="grid gap-3 border-t border-white/8 px-4 py-3 sb-fade-up lg:hidden">
-            <button type="button" onClick={openLeaderboard} className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-white/5 hover:text-foreground">
+            <button type="button" onClick={openLeaderboard} aria-current={view === "leaderboard" ? "page" : undefined} className="sb-leaderboard-button flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold">
               <Trophy size={17} /> Leaderboard
             </button>
             <label className="flex h-11 items-center rounded-full border border-white/10 bg-white/5 px-4 md:hidden">

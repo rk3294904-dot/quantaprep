@@ -239,7 +239,7 @@ export function WatchView({
 
   if (playerOnly) {
     return (
-      <main className="fixed inset-0 flex min-h-screen flex-col bg-[#060a14] overflow-y-auto sb-scroll">
+      <main className="fixed inset-0 flex min-h-0 min-w-0 flex-col bg-[#060a14] overflow-y-auto sb-scroll">
         {/* Top bar — static, always visible */}
         <div className="sticky top-0 z-20 flex items-center gap-2 px-3 py-3 sm:px-5 bg-[#060a14]/85 backdrop-blur-md border-b border-white/5">
           <GlassButton variant="glass" size="sm" onClick={back} className="shrink-0">
@@ -255,7 +255,7 @@ export function WatchView({
         {/* Player — responsive, fills width */}
         <div className="w-full bg-black flex-shrink-0">
           <div className="mx-auto w-full max-w-[1600px]">
-            <div className="relative w-full" style={{ minHeight: "min(56.25vw, 70vh)" }}>
+            <div className="relative w-full min-w-0">
               <PlayerBlock
                 batchId={batchId}
                 subjectSlug={subjectSlug}
@@ -413,6 +413,7 @@ export function WatchView({
               contentId={contentId}
               urlType={urlType}
               videoId={videoId}
+              videoUrl={videoUrl}
               stream={stream}
               title={title}
               notes={notes}
@@ -488,9 +489,9 @@ function PlayerBlock({
   const embedSrc = lxpwWatchUrl({ batchId, subjectSlug, contentId, urlType, youtubeId: videoId, videoUrl });
 
   return (
-    <div className="space-y-2">
+    <div className="w-full min-w-0 space-y-2">
       {/* toggle bar */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="glass-soft rounded-full p-1 flex gap-1">
           <PlayerToggle active={mode === "embed"} onClick={() => setMode("embed")} icon={<Monitor size={13} />}>
             PW Player
@@ -516,7 +517,7 @@ function PlayerBlock({
           onOpenNote={onOpenNote}
         />
       ) : (
-        <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 select-none">
+        <div className="sb-pw-embed relative w-full min-w-0 bg-black rounded-2xl overflow-hidden border border-white/10 select-none">
           <iframe
             key={embedSrc}
             src={embedSrc}
