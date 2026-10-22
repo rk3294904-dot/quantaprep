@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { leaderboardDb } from "../../../../db";
+import { getLeaderboardDb } from "../../../../db";
 import { leaderboardUsers } from "../../../../db/schema";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ const headers = { "Cache-Control": "no-store" };
 
 export async function GET() {
   try {
-    const users = await leaderboardDb.select({
+    const users = await getLeaderboardDb().select({
       id: leaderboardUsers.id,
       displayName: leaderboardUsers.displayName,
       photoURL: leaderboardUsers.photoURL,
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid sign-in session." }, { status: 401, headers });
   }
   try {
-    await leaderboardDb.insert(leaderboardUsers).values(profile).onConflictDoUpdate({
+    await getLeaderboardDb().insert(leaderboardUsers).values(profile).onConflictDoUpdate({
       target: leaderboardUsers.id,
       set: { displayName: profile.displayName, photoURL: profile.photoURL },
     });
