@@ -77,7 +77,7 @@ export function ProfileView() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 px-6 pb-8 sm:grid-cols-3 sm:px-10">
-            <StatCard icon={<Sparkles size={18} />} label="Points earned" value="See leaderboard" />
+            <StatCard icon={<Sparkles size={18} />} label="Study ranking" value="See leaderboard" />
             <StatCard icon={<ShieldCheck size={18} />} label="Enrolled batches" value={enrolled === null ? "Loading..." : String(enrolled)} />
             <StatCard icon={<Mail size={18} />} label="Sign-in method" value="Google" />
           </div>

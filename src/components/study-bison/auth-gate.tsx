@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { LogIn, Loader2, ShieldCheck } from "lucide-react";
-import { finishGoogleRedirect, firebaseAuth, signInWithGoogle } from "@/lib/firebase";
+import { finishGoogleRedirect, firebaseAuth, signInWithGoogle, registerLeaderboardUser } from "@/lib/firebase";
 import { GlassButton } from "./glass";
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -17,7 +17,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
       if (!active) return;
       setUser(nextUser);
-      if (nextUser) setChecking(false);
+      if (nextUser) {
+        setChecking(false);
+        // Registration never blocks access; the leaderboard retries on open.
+        void registerLeaderboardUser(nextUser).catch(() => {});
+      }
     });
 
     const completeRedirect = async () => {

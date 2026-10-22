@@ -9,14 +9,19 @@ import { cn } from "@/lib/utils";
 
 interface LeaderboardEntry {
   rank: number;
+  legacy: boolean;
+  points: number;
   id: string;
   displayName?: string;
   photoURL?: string;
-  points?: number;
+  lectureMinutesWatched: number;
+  pdfsOpened: number;
+  hasMinutes: boolean;
+  hasPdfs: boolean;
 }
 
-const number = new Intl.NumberFormat("en");
-const points = (entry: LeaderboardEntry) => Math.max(0, entry.points ?? 0);
+const number = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
+const score = (entry: LeaderboardEntry) => entry.legacy ? entry.points : entry.lectureMinutesWatched;
 const podiumNames = ["The pace setter", "One to watch", "Making moves"];
 
 function LearnerAvatar({ entry, podium = false }: { entry: LeaderboardEntry; podium?: boolean }) {
@@ -39,8 +44,9 @@ function PodiumCard({ entry }: { entry: LeaderboardEntry }) {
       </div>
       <p className="mt-4 w-full truncate text-xs font-extrabold sm:text-base" title={entry.displayName || "Learner"}>{entry.displayName || "Learner"}</p>
       <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">{podiumNames[entry.rank - 1]}</p>
-      <p className="lb-score mt-4 text-xl font-black tracking-tight sm:text-3xl">{number.format(points(entry))}</p>
-      <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[10px]">Learning points</span>
+      <p className="lb-score mt-4 text-xl font-black tracking-tight sm:text-3xl">{entry.legacy || entry.hasMinutes ? number.format(score(entry)) : "—"}</p>
+      <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[10px]">{entry.legacy ? "Learning points" : "Minutes watched"}</span>
+      <p className="mt-2 text-[10px] text-muted-foreground">{entry.legacy ? "Previous rankings" : entry.hasPdfs ? `${number.format(entry.pdfsOpened)} PDFs opened` : "PDFs not recorded"}</p>
       <div className="lb-placement mt-5 flex items-center justify-center gap-1.5 text-[10px] font-bold sm:text-xs">
         <Medal size={14} aria-hidden="true" /> {entry.rank === 1 ? "Champion" : entry.rank === 2 ? "Runner-up" : "Third place"}
       </div>
@@ -66,8 +72,9 @@ export function LeaderboardView() {
   }, [attempt]);
 
   const filtered = entries.filter((entry) => (entry.displayName || "Learner").toLowerCase().includes(search.trim().toLowerCase()));
-  const totalPoints = entries.reduce((total, entry) => total + points(entry), 0);
-  const topScore = entries[0] ? points(entries[0]) : 0;
+  const legacy = entries[0]?.legacy ?? false;
+  const totalMinutes = entries.reduce((total, entry) => total + score(entry), 0);
+  const topScore = entries[0] ? score(entries[0]) : 0;
   const podium = [entries[1], entries[0], entries[2]].filter((entry): entry is LeaderboardEntry => !!entry);
 
   return (
@@ -89,6 +96,8 @@ export function LeaderboardView() {
           </div>
         </header>
 
+        {!loading && !failed && legacy && <p role="status" className="mb-6 rounded-2xl border border-amber-200/20 bg-amber-200/5 px-5 py-4 text-sm leading-6 text-amber-100">Showing previous points rankings until watched-minute or PDF activity is available.</p>}
+
         {loading ? (
           <div role="status" aria-label="Loading leaderboard" className="space-y-6">
             <span className="sr-only">Loading leaderboard</span>
@@ -106,7 +115,7 @@ export function LeaderboardView() {
           <section className="lb-panel rounded-3xl px-6 py-14 text-center">
             <Trophy size={38} className="mx-auto text-[#e7bd6d]" />
             <h2 className="mt-5 text-2xl font-extrabold">The podium is waiting</h2>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Start watching lectures to earn learning points. Your next study session could put you on the board.</p>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">No saved leaderboard entries are available yet. Signed-in learners appear here even before their first lecture.</p>
             <GlassButton variant="gold" className="mt-6" onClick={() => navigate({ view: "home" })}>Explore lectures <ArrowUpRight size={16} /></GlassButton>
           </section>
         ) : (
@@ -122,28 +131,28 @@ export function LeaderboardView() {
             </section>
 
             <div className="my-6 grid grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/[0.02] py-5">
-              {[{ icon: Users, value: entries.length, label: "Ranked learners" }, { icon: Award, value: totalPoints, label: "Top learners’ points" }, { icon: Trophy, value: topScore, label: "Leading score" }].map(({ icon: Icon, value, label }) => (
+              {[{ icon: Users, value: entries.length, label: "Ranked learners" }, { icon: Award, value: totalMinutes, label: legacy ? "Learners’ points" : "Learners’ minutes" }, { icon: Trophy, value: topScore, label: legacy ? "Leading points" : "Leading minutes" }].map(({ icon: Icon, value, label }) => (
                 <div key={label} className="min-w-0 px-2 text-center"><Icon size={15} className="mx-auto mb-2 text-[#e7bd6d]" aria-hidden="true" /><p className="break-words text-lg font-extrabold sm:text-2xl">{number.format(value)}</p><p className="mt-1 text-[10px] text-muted-foreground sm:text-xs">{label}</p></div>
               ))}
             </div>
 
             <section className="lb-panel overflow-hidden rounded-3xl" aria-labelledby="rankings-heading">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 p-5 sm:px-7">
-                <div><h2 id="rankings-heading" className="text-lg font-extrabold">The leaderboard</h2><p className="mt-1 text-xs text-muted-foreground">Top 10 learners · ranked by lecture points</p></div>
+                <div><h2 id="rankings-heading" className="text-lg font-extrabold">The leaderboard</h2><p className="mt-1 text-xs text-muted-foreground">{legacy ? "All learners · previous points rankings" : "All learners · watched minutes first, PDF opens break ties"}</p></div>
                 <div className="flex h-11 w-full items-center gap-2 rounded-xl border border-white/10 bg-[#060d19] px-3 focus-within:border-[#e7bd6d]/60 sm:w-60">
                   <Search size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
                   <input aria-label="Search ranked learners" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a learner…" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
                   {search && <button type="button" aria-label="Clear search" onClick={() => setSearch("")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-white/10"><X size={14} /></button>}
                 </div>
               </div>
-              <div className="flex justify-between px-5 pb-2 pt-4 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground sm:px-7"><span>Rank / Learner</span><span>Learning points</span></div>
+              <div className="flex justify-between px-5 pb-2 pt-4 text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground sm:px-7"><span>Rank / Learner</span><span>{legacy ? "Learning points" : "Minutes watched"}</span></div>
               <div className="space-y-2 p-3 sm:px-5 sm:pb-5" aria-live="polite">
                 {filtered.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">No ranked learners match “{search}”.</p> : filtered.map((entry) => (
                   <div key={entry.id} className={cn("lb-rank-row flex items-center gap-3 rounded-2xl border px-3 py-3 sm:gap-4 sm:px-4", entry.rank <= 3 ? `lb-rank-${entry.rank}` : "border-white/5 bg-white/[0.015]")}>
                     <span className="w-6 shrink-0 text-center text-xs font-extrabold text-muted-foreground">{entry.rank <= 3 ? <Medal className="mx-auto lb-row-medal" size={20} aria-label={`Rank ${entry.rank}`} /> : String(entry.rank).padStart(2, "0")}</span>
                     <LearnerAvatar entry={entry} />
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{entry.displayName || "Learner"}</p><p className="mt-1 text-[10px] text-muted-foreground">{entry.rank === 1 ? "Leading the league" : entry.rank <= 3 ? "Podium finisher" : "Building momentum"}</p></div>
-                    <div className="shrink-0 text-right"><p className="text-sm font-extrabold tabular-nums sm:text-base">{number.format(points(entry))}</p><span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">pts</span></div>
+                    <div className="shrink-0 text-right"><p className="text-sm font-extrabold tabular-nums sm:text-base">{entry.legacy || entry.hasMinutes ? number.format(score(entry)) : "—"}</p><span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{entry.legacy ? "pts" : "min"}</span><p className="mt-1 text-[10px] text-muted-foreground">{entry.legacy ? "Previous rankings" : entry.hasPdfs ? `${number.format(entry.pdfsOpened)} PDFs opened` : "PDFs not recorded"}</p></div>
                   </div>
                 ))}
               </div>
@@ -153,7 +162,7 @@ export function LeaderboardView() {
 
         <footer className="mt-7 flex items-start gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-5">
           <BookOpen size={19} className="mt-0.5 shrink-0 text-[#e7bd6d]" aria-hidden="true" />
-          <div><p className="text-sm font-bold">Your next lecture counts.</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Points come from watching lectures. Keep learning, stay consistent, and make your way up the rankings.</p></div>
+          <div><p className="text-sm font-bold">Your next lecture counts.</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{legacy ? "Previous points rankings stay visible until watched-minute or PDF activity becomes available. Points are not converted into minutes." : "Rankings use saved lecture minutes, then PDF opens. Older points are not converted into minutes."}</p></div>
         </footer>
       </div>
     </main>
