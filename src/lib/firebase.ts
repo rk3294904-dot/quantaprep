@@ -1,3 +1,4 @@
+import { readStudyActivity, selectLeaderboard } from "./study-activity";
 import { getApps, initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -13,9 +14,6 @@ import {
   getDocs,
   getFirestore,
   increment,
-  limit,
-  orderBy,
-  query,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
@@ -113,11 +111,39 @@ export async function recordLectureProgress({
   );
 }
 
+export async function registerLeaderboardUser(user = firebaseAuth.currentUser) {
+  if (!user) return;
+  const response = await fetch("/api/leaderboard-users", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+  });
+  if (!response.ok) throw new Error("Unable to register leaderboard profile");
+}
+
 export async function getLeaderboard() {
-  const snapshot = await getDocs(query(collection(firebaseDb, "leaderboard"), orderBy("points", "desc"), limit(10)));
-  return snapshot.docs.map((item, index) => ({
-    rank: index + 1,
-    id: item.id,
-    ...(item.data() as { displayName?: string; photoURL?: string; points?: number }),
-  }));
+  // Ensure the current learner is visible even on their very first visit.
+  await registerLeaderboardUser();
+  const [snapshot, response] = await Promise.all([
+    getDocs(collection(firebaseDb, "leaderboard")),
+    fetch("/api/leaderboard-users", { cache: "no-store" }),
+  ]);
+  if (!response.ok) throw new Error("Unable to load leaderboard users");
+  const { users } = await response.json() as {
+    users: { id: string; displayName: string; photoURL: string }[];
+  };
+  const entries = new Map(users.map((user) => [user.id, {
+    ...user, points: 0, ...readStudyActivity({}),
+  }]));
+  for (const item of snapshot.docs) {
+    const data = item.data();
+    const profile = entries.get(item.id);
+    entries.set(item.id, {
+      id: item.id,
+      points: typeof data.points === "number" && Number.isFinite(data.points) ? Math.max(0, data.points) : 0,
+      displayName: profile?.displayName ?? (typeof data.displayName === "string" ? data.displayName : "Learner"),
+      photoURL: profile?.photoURL ?? (typeof data.photoURL === "string" ? data.photoURL : ""),
+      ...readStudyActivity(data),
+    });
+  }
+  return selectLeaderboard([...entries.values()]);
 }

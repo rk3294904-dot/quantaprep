@@ -17,11 +17,6 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // True when the request is a signed-in user.
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     // ---------------------------------------------------------------------
     // Per-user enrollments
     //   users/{uid}/enrollments/{batchId}
@@ -42,32 +37,43 @@ service cloud.firestore {
       }
     }
 
-    // ---------------------------------------------------------------------
-    // Leaderboard
-    //   leaderboard/{uid}
-    // Anyone may read the leaderboard (it is a public ranking).
-    // A user may only create/update their own entry; the uid in the doc
-    // must match the auth uid, and points may only advance via increment()
-    // so no one can arbitrarily set their own score.
-    // ---------------------------------------------------------------------
+    // Activity aggregates are public, so store only public profile/activity
+    // fields here. A trusted server (Admin SDK) maintains minute/PDF totals
+    // and studyDays; clients cannot create or change these ranking fields.
+    // Existing documents remain readable without a migration.
     match /leaderboard/{uid} {
       allow read: if true;
 
+      // Compatibility for the existing legacy point writer. These points
+      // are no longer used for ranking. Rules cannot verify actual playback.
       allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'userId', 'displayName', 'photoURL', 'points',
+          'lastBatchId', 'lastContentId', 'updatedAt'
+        ])
         && request.resource.data.userId == uid
-        && request.resource.data.points is int
-        && request.resource.data.points >= 0;
+        && request.resource.data.displayName is string
+        && request.resource.data.photoURL is string
+        && request.resource.data.lastBatchId is string
+        && request.resource.data.lastContentId is string
+        && request.resource.data.points == 1
+        && request.resource.data.updatedAt == request.time;
 
       allow update: if isOwner(uid)
         && request.resource.data.userId == uid
-        // Points may only increase, and only via increment (no arbitrary set).
-        && (
-          !('points' in request.resource.data.diff().afterData) ||
-          request.resource.data.diff().afterData.points >
-            resource.data.points
-        );
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'userId', 'displayName', 'photoURL', 'points',
+          'lastBatchId', 'lastContentId', 'updatedAt'
+        ])
+        && request.resource.data.displayName is string
+        && request.resource.data.photoURL is string
+        && request.resource.data.lastBatchId is string
+        && request.resource.data.lastContentId is string
+        && request.resource.data.points is int
+        && request.resource.data.points == resource.data.get('points', 0) + 1
+        && request.resource.data.updatedAt == request.time;
 
-      allow delete: if false; // leaderboard entries are never deleted by clients
+      allow delete: if false;
     }
 
     // Deny everything else by default.

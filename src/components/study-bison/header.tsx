@@ -3,30 +3,27 @@
 import { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { useApp } from "@/lib/store";
-import { Search, Menu, X, Trophy, LogIn } from "lucide-react";
+import { Search, Trophy, LogIn } from "lucide-react";
+import { StudyActivityButton } from "./study-activity-button";
 import { cn } from "@/lib/utils";
 import { firebaseAuth, signInWithGoogle } from "@/lib/firebase";
 
 export function SiteHeader() {
   const { navigate, searchQuery, setSearchQuery, view } = useApp();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => onAuthStateChanged(firebaseAuth, setUser), []);
 
   const openProfile = () => {
-    setMobileOpen(false);
     navigate({ view: "profile" });
   };
 
   const goHome = () => {
-    setMobileOpen(false);
     navigate({ view: "home" });
   };
 
   const openLeaderboard = () => {
-    setMobileOpen(false);
     navigate({ view: "leaderboard" });
   };
 
@@ -66,22 +63,13 @@ export function SiteHeader() {
             </button>
           )}
 
-          <button className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full glass lg:hidden" onClick={() => setMobileOpen((value) => !value)} aria-label={mobileOpen ? "Close menu" : "Open menu"}>
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+          <StudyActivityButton user={user} />
         </div>
 
-        {mobileOpen && (
-          <div className="grid gap-3 border-t border-white/8 px-4 py-3 sb-fade-up lg:hidden">
-            <button type="button" onClick={openLeaderboard} aria-current={view === "leaderboard" ? "page" : undefined} className="sb-leaderboard-button flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold">
-              <Trophy size={17} /> Leaderboard
-            </button>
-            <label className="flex h-11 items-center rounded-full border border-white/10 bg-white/5 px-4 md:hidden">
-              <Search size={15} className="text-muted-foreground" />
-              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search your batch..." className="h-full w-full bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground/70" aria-label="Search batches" />
-            </label>
-          </div>
-        )}
+        <label className="mx-3 mb-3 flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 md:hidden">
+          <Search size={15} className="shrink-0 text-muted-foreground" />
+          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search your batch..." className="min-w-0 w-full bg-transparent text-sm outline-none" aria-label="Search batches" />
+        </label>
       </div>
     </header>
   );
