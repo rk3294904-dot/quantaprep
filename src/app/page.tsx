@@ -12,6 +12,8 @@ import { LeaderboardView } from "@/components/study-bison/leaderboard-view";
 import { ProfileView } from "@/components/study-bison/profile-view";
 import { PdfViewerView } from "@/components/study-bison/pdf-viewer";
 import { AuthGate } from "@/components/study-bison/auth-gate";
+import { AdsSection } from "@/components/study-bison/ads-section";
+import { TelegramPopup } from "@/components/study-bison/telegram-popup";
 
 export default function Page() {
   const { view, batchId, subjectSlug, topicId, contentId } = useApp();
@@ -39,7 +41,13 @@ export default function Page() {
   return (
     <AuthGate>
       <div className="flex flex-col min-h-screen">
-        {view !== "watch" && view !== "pdf" && <SiteHeader />}
+        <TelegramPopup />
+        {view !== "watch" && view !== "pdf" && (
+          <>
+            <SiteHeader />
+            <AdsSection />
+          </>
+        )}
       {view === "leaderboard" ? (
         <LeaderboardView />
       ) : view === "profile" ? (
